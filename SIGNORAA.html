@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signora – Sign Language Translator</title>
+<style>
+:root{
+  --bg:#0b0d1a; --panel:rgba(255,255,255,.05); --border:rgba(255,255,255,.10);
+  --text:#e9ebff; --muted:#9aa0c3; --accent:#7c6cff; --accent2:#22d3ee;
+  --ok:#34d399; --bad:#f87171;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;color:var(--text);
+  background:
+    radial-gradient(900px 500px at 10% -10%,rgba(124,108,255,.28),transparent 60%),
+    radial-gradient(800px 500px at 100% 0%,rgba(34,211,238,.18),transparent 60%),
+    var(--bg);
+  min-height:100vh;
+}
+header{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:18px 32px;border-bottom:1px solid var(--border);backdrop-filter:blur(8px);
+}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:24px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 6px 24px rgba(124,108,255,.45)}
+.brand h1{margin:0;font-size:22px;letter-spacing:.5px}
+.brand p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;font-size:13px;
+  background:var(--panel);border:1px solid var(--border);color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:#64748b}
+.pill.live .dot{background:var(--ok);box-shadow:0 0 10px var(--ok);animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+main{display:grid;grid-template-columns:1.35fr 1fr;gap:22px;padding:24px 32px;max-width:1400px;margin:0 auto}
+@media(max-width:980px){main{grid-template-columns:1fr;padding:16px}}
+.col{display:flex;flex-direction:column;gap:22px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:20px;backdrop-filter:blur(12px)}
+.card h2{margin:0 0 14px;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+/* camera */
+.cam{position:relative;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:#000;border:1px solid var(--border)}
+.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.cam .idle{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center;padding:20px}
+.cam .idle .big{font-size:54px}
+.badge{position:absolute;left:14px;bottom:14px;z-index:3;padding:8px 16px;border-radius:12px;font-weight:700;font-size:20px;
+  background:rgba(11,13,26,.75);backdrop-filter:blur(6px);border:1px solid var(--border);display:none}
+.fps{position:absolute;right:12px;top:12px;z-index:3;font-size:12px;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.55);color:#cbd5ff;display:none}
+.loader{position:absolute;inset:0;z-index:4;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(11,13,26,.7);color:var(--muted)}
+.spin{width:38px;height:38px;border:4px solid rgba(255,255,255,.15);border-top-color:var(--accent2);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{
+  font:inherit;font-weight:600;font-size:14px;color:#fff;border:0;border-radius:12px;padding:11px 18px;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),#5b4bff);transition:.2s;box-shadow:0 6px 18px rgba(124,108,255,.3)
+}
+button:hover{transform:translateY(-2px);filter:brightness(1.1)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none;filter:none}
+button.ghost{background:var(--panel);border:1px solid var(--border);box-shadow:none;color:var(--text)}
+button.danger{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:none}
+button.cyan{background:linear-gradient(135deg,var(--accent2),#0891b2);color:#06202a}
+
+/* output */
+.live-gesture{display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;background:rgba(124,108,255,.12);border:1px solid rgba(124,108,255,.3)}
+.live-gesture .emoji{font-size:46px;width:70px;text-align:center}
+.live-gesture .name{font-size:28px;font-weight:700}
+.live-gesture .sub{font-size:13px;color:var(--muted)}
+.bar{height:7px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s}
+.sentence{min-height:96px;margin-top:14px;padding:16px;border-radius:16px;font-size:24px;line-height:1.4;
+  background:rgba(0,0,0,.25);border:1px dashed var(--border);word-break:break-word}
+.sentence.empty{color:var(--muted);font-size:16px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+label.sw{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.note{font-size:12.5px;color:var(--muted);margin-top:10px}
+
+/* gestures guide */
+.guide{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.g{padding:12px 8px;border-radius:14px;text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--border);transition:.2s}
+.g .e{font-size:28px}.g .t{font-size:13px;font-weight:600;margin-top:4px}
+.g .h{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.3}
+.guide{max-height:480px;overflow:auto;padding-right:4px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+button.tab{background:var(--panel);border:1px solid var(--border);box-shadow:none;color:var(--muted);padding:9px 14px;font-size:13px}
+button.tab.active{background:linear-gradient(135deg,var(--accent),#5b4bff);color:#fff;border-color:transparent}
+.g.active{background:rgba(124,108,255,.25);border-color:var(--accent);transform:scale(1.05)}
+
+/* history */
+.hist{max-height:230px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+.hi{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:14px}
+.hi span:last-child{color:var(--muted);font-size:12px;white-space:nowrap}
+.hi.sp{border-left:3px solid var(--accent2)}
+.hi.gs{border-left:3px solid var(--accent)}
+.empty-h{color:var(--muted);font-size:13px;text-align:center;padding:14px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);opacity:0;padding:12px 20px;border-radius:12px;
+  background:#1b1f3b;border:1px solid var(--border);transition:.3s;z-index:99;max-width:90vw;font-size:14px}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+footer{text-align:center;color:var(--muted);font-size:12.5px;padding:10px 0 26px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">🤟</div>
+    <div>
+      <h1>SIGNORA</h1>
+      <p>AI Sign Language → Text &amp; Speech Translator</p>
+    </div>
+  </div>
+  <div class="status">
+    <div class="pill" id="camPill"><span class="dot"></span><span id="camStatus">Camera off</span></div>
+    <div class="pill"><span>🧠 MediaPipe Hands</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div class="col">
+    <section class="card">
+      <h2>Live Camera</h2>
+      <div class="cam">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="idle" id="idle"><div class="big">📷</div><div>Press <b>Start Camera</b> and show your hand<br/>palm facing the camera, about an arm's length away.</div></div>
+        <div class="loader" id="loader"><div class="spin"></div><div>Loading hand-tracking model…</div></div>
+        <div class="fps" id="fps">0 FPS</div>
+        <div class="badge" id="badge"></div>
+      </div>
+      <div class="btns">
+        <button id="startBtn">▶ Start Camera</button>
+        <button id="stopBtn" class="danger" disabled>■ Stop</button>
+        <button id="snapBtn" class="ghost" disabled>📸 Snapshot</button>
+      </div>
+      <div class="note">Use good lighting and a plain background. Needs HTTPS or localhost for camera access.</div>
+    </section>
+
+    <section class="card">
+      <h2>Supported Gestures <span id="gcount" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="tabs">
+        <button class="tab active" data-m="words">💬 Words</button>
+        <button class="tab" data-m="numbers">🔢 Numbers 0–9</button>
+        <button class="tab" data-m="letters">🔤 Letters A–Z</button>
+      </div>
+      <div class="guide" id="guide"></div>
+    </section>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col">
+    <section class="card">
+      <h2>Recognised Output</h2>
+      <div class="live-gesture">
+        <div class="emoji" id="liveEmoji">✋</div>
+        <div style="flex:1">
+          <div class="name" id="liveName">Waiting…</div>
+          <div class="sub" id="liveSub">Show a gesture to the camera</div>
+          <div class="bar"><i id="holdBar"></i></div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <b style="font-size:14px;color:var(--muted)">SENTENCE</b>
+        <label class="sw"><input type="checkbox" id="autoSpeak" checked /> Auto-speak each word</label>
+      </div>
+      <div class="sentence empty" id="sentence">Held gestures are added here as words…</div>
+      <div class="btns">
+        <button id="speakBtn">🔊 Speak</button>
+        <button id="copyBtn" class="ghost">📋 Copy</button>
+        <button id="undoBtn" class="ghost">⌫ Undo</button>
+        <button id="spaceBtn" class="ghost">␣ Space</button>
+        <button id="clearSentBtn" class="ghost">Clear</button>
+      </div>
+      <div class="note">Hold a gesture steady for ~1 second to add it to the sentence.</div>
+    </section>
+
+    <section class="card">
+      <h2>Speech → Text <span id="speechState" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="sentence empty" id="heard" style="min-height:64px;font-size:20px">Press the mic and speak…</div>
+      <div class="btns">
+        <button id="micBtn" class="cyan">🎤 Start Listening</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>History <button class="ghost" id="clearHist" style="padding:6px 12px;font-size:12px">Clear</button></h2>
+      <div class="hist" id="hist"></div>
+    </section>
+  </div>
+</main>
+<footer>Signora · Built with MediaPipe Hands, Web Speech API &amp; JavaScript</footer>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+/* ============ CONFIG ============ */
+const GESTURES = {
+  "Hello":      {e:"🖐️", word:"Hello",      h:"Open palm, thumb out, fingers up"},
+  "Goodbye":    {e:"👋", word:"Goodbye",    h:"Open palm, fingers pointing down"},
+  "Wait":       {e:"✋", word:"Wait",       h:"Open palm sideways"},
+  "Yes":        {e:"👍", word:"Yes",        h:"Thumbs up"},
+  "No":         {e:"👎", word:"No",         h:"Thumbs down"},
+  "Stop":       {e:"✊", word:"Stop",       h:"Closed fist"},
+  "Peace":      {e:"✌️", word:"Peace",      h:"Index + middle, thumb tucked (same shape as number 2)"},
+  "I Love You": {e:"🤟", word:"I love you", h:"Thumb, index, pinky out"},
+  "Call Me":    {e:"🤙", word:"Call me",    h:"Thumb + pinky out"},
+  "OK":         {e:"👌", word:"OK",         h:"Thumb-index circle, 3 fingers up"},
+  "Rock":       {e:"🤘", word:"Rock on",    h:"Index + pinky, thumb tucked"},
+  "One":        {e:"☝️", word:"One",        h:"Index finger pointing up"},
+  "Left":       {e:"👈", word:"Left",       h:"Index pointing to your left"},
+  "Right":      {e:"👉", word:"Right",      h:"Index pointing to your right"},
+  "Down":       {e:"👇", word:"Down",       h:"Index pointing down"},
+  "Three":      {e:"3️⃣", word:"Three",      h:"Index, middle, ring up (or thumb+index+middle)"},
+  "Four":       {e:"4️⃣", word:"Four",       h:"Four fingers up, thumb folded"},
+  "I":          {e:"🙋", word:"I",          h:"Only pinky up, thumb tucked"},
+  "L Sign":     {e:"🫵", word:"L",          h:"Index up + thumb out (L shape)"},
+  "Eat":        {e:"🤌", word:"Eat",        h:"All fingertips pinched to thumb, away from palm"},
+  "Pinch":      {e:"🤏", word:"A little",   h:"Thumb + index touching, others curled"}
+};
+/* ---- Numbers 0-9 (ASL style) ---- */
+const NUMBERS = {};
+[["0","O shape: all fingertips meet the thumb"],
+ ["1","Index finger up, others curled"],
+ ["2","Index + middle up (same shape as Peace ✌️)"],
+ ["3","Index + middle + ring up (or thumb + index + middle)"],
+ ["4","Four fingers up, thumb folded"],
+ ["5","Open hand, thumb out"],
+ ["6","Thumb touches pinky, other 3 fingers up"],
+ ["7","Thumb touches ring finger, other 3 up"],
+ ["8","Thumb touches middle finger, other 3 up"],
+ ["9","Thumb touches index, other 3 up"]
+].forEach(([k,h])=>NUMBERS[k]={e:k+"\uFE0F\u20E3",word:k,h});
+
+/* ---- Letters A-Z (ASL fingerspelling; J and Z need motion so they are left out) ---- */
+const LETTERS = {};
+[["A","Fist, thumb up beside the index"],
+ ["B","Four fingers up, thumb folded across palm"],
+ ["C","Curved hand, like the letter C"],
+ ["D","Index up, other fingers curled"],
+ ["E","Fingers curled down, thumb tucked under"],
+ ["F","Thumb-index circle, other 3 fingers up"],
+ ["G","Index pointing sideways"],
+ ["H","Index + middle pointing sideways"],
+ ["I","Only pinky up, thumb tucked"],
+ ["K","Index + middle up apart, thumb between"],
+ ["L","Index up + thumb out (L shape)"],
+ ["M","Fist, thumb under three fingers"],
+ ["N","Fist, thumb under two fingers"],
+ ["O","All fingertips meet thumb (O shape)"],
+ ["P","Index + middle pointing down"],
+ ["Q","Index pointing down"],
+ ["R","Index + middle crossed / touching"],
+ ["S","Fist, thumb across the front"],
+ ["T","Fist, thumb between index and middle"],
+ ["U","Index + middle up, together"],
+ ["V","Index + middle up, apart (✌️)"],
+ ["W","Index + middle + ring up, apart"],
+ ["X","Index finger hooked, others curled"],
+ ["Y","Thumb + pinky out (🤙)"]
+].forEach(([k,h])=>LETTERS[k]={e:k,word:k,h});
+
+let mode = "words";                                   // words | numbers | letters
+const DB = () => mode==="numbers" ? NUMBERS : mode==="letters" ? LETTERS : GESTURES;
+let nextSp = false;                                   // next char starts a new word
+
+const BUFFER = 14;        // frames used for smoothing
+const NEED   = 10;        // frames that must agree
+const HOLD_MS = 900;      // hold time to commit a word
+const $ = id => document.getElementById(id);
+
+/* ============ STATE ============ */
+let stream=null, hands=null, cam=null, ctx=null;
+let buf=[], holdStart=0, holdGesture="", committed="";
+let words=[], history=[], lastFrame=performance.now(), fpsAvg=0;
+let running=false;
+
+/* ============ UI HELPERS ============ */
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2800)}
+function buildGuide(){
+  const db=DB();
+  $("guide").innerHTML="";
+  Object.entries(db).forEach(([k,v])=>{
+    const el=document.createElement("div");el.className="g";el.dataset.k=k;
+    el.title=v.h||"";
+    el.innerHTML=`<div class="e">${v.e}</div><div class="t">${k}</div><div class="h">${v.h||""}</div>`;
+    $("guide").appendChild(el);
+  });
+  const label={words:"gestures",numbers:"numbers",letters:"letters"}[mode];
+  $("gcount").textContent=Object.keys(db).length+" "+label;
+}
+function setLive(name){
+  const g=DB()[name];
+  $("liveEmoji").textContent=g?g.e:"✋";
+  $("liveName").textContent=name||"No gesture";
+  $("liveSub").textContent=name?"Hold steady to add to sentence":(running?"Show a clear hand gesture":"Waiting…");
+  const b=$("badge");
+  if(name){b.style.display="block";b.textContent=g.e+" "+name}else b.style.display="none";
+  document.querySelectorAll(".g").forEach(x=>x.classList.toggle("active",x.dataset.k===name));
+}
+function sentenceText(){
+  let out="";
+  words.forEach((w,i)=>{
+    const p=words[i-1];
+    const glue=i>0&&w.c==="char"&&p.c==="char"&&!w.sp;   // letters/digits join into one word
+    if(i>0&&!glue)out+=" ";
+    out+=w.t;
+  });
+  return out;
+}
+function renderSentence(){
+  const s=$("sentence");
+  if(!words.length){s.classList.add("empty");s.textContent="Held gestures are added here as words…";return}
+  s.classList.remove("empty");s.textContent=sentenceText();
+}
+function renderHistory(){
+  const h=$("hist");h.innerHTML="";
+  if(!history.length){h.innerHTML='<div class="empty-h">No activity yet</div>';return}
+  history.forEach(i=>{
+    const d=document.createElement("div");d.className="hi "+(i.type==="speech"?"sp":"gs");
+    const a=document.createElement("span");a.textContent=(i.type==="speech"?"🎤 ":"🤟 ")+i.text;
+    const b=document.createElement("span");b.textContent=i.time;
+    d.append(a,b);h.appendChild(d);
+  });
+}
+function addHistory(type,text){
+  history.unshift({type,text,time:new Date().toLocaleTimeString()});
+  if(history.length>50)history.pop();
+  try{localStorage.setItem("signora_hist",JSON.stringify(history))}catch(e){}
+  renderHistory();
+}
+function setCamStatus(on,txt){
+  $("camPill").classList.toggle("live",on);$("camStatus").textContent=txt;
+}
+
+/* ============ SPEECH OUT ============ */
+function speak(text){
+  if(!text||!("speechSynthesis" in window))return;
+  const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=1;
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+}
+
+/* ============ GESTURE ENGINE ============ */
+const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+
+function classifyWord(lm){
+  const palm=d(lm[0],lm[9])||0.0001;             // hand-size scale
+  // finger extended if tip is clearly farther from wrist than its PIP joint (rotation independent)
+  const ext=(tip,pip)=>d(lm[tip],lm[0])>d(lm[pip],lm[0])*1.12;
+  const idx=ext(8,6), mid=ext(12,10), ring=ext(16,14), pink=ext(20,18);
+  const thumbOut=d(lm[4],lm[5])/palm>0.75 && d(lm[4],lm[17])>d(lm[3],lm[17]);
+  const n=idx+mid+ring+pink;
+
+  const up=(lm[0].y-lm[12].y)/palm;            // >0: fingers point up, <0: point down
+  const tipsToThumb=[8,12,16,20].map(i=>d(lm[i],lm[4])/palm);
+
+  // Eat: all fingertips gathered at the thumb tip, held away from the palm
+  if(Math.max(...tipsToThumb)<0.45 && d(lm[4],lm[0])/palm>1.3) return "Eat";
+
+  // thumb–index touching: OK (other 3 up) or Pinch (others curled)
+  if(d(lm[4],lm[8])/palm<0.35){
+    if(mid&&ring&&pink) return "OK";
+    if(!mid&&!ring&&!pink) return "Pinch";
+  }
+
+  // open palm: direction decides the word; folded thumb = Four
+  if(n===4){
+    if(!thumbOut) return "Four";
+    if(up>0.7)  return "Hello";
+    if(up<-0.7) return "Goodbye";
+    return "Wait";
+  }
+
+  // fist family
+  if(n===0){
+    if(!thumbOut) return "Stop";
+    const dy=(lm[4].y-lm[0].y)/palm;           // thumbs up / down
+    if(dy<-0.9) return "Yes";
+    if(dy>0.9)  return "No";
+    return "";
+  }
+
+  // only index finger out: direction picks the word
+  if(idx&&!mid&&!ring&&!pink){
+    if(thumbOut) return "L Sign";
+    const dx=(lm[8].x-lm[5].x)/palm, dy=(lm[8].y-lm[5].y)/palm;
+    if(Math.abs(dy)>=Math.abs(dx)) return dy<0?"One":"Down";
+    return dx<0?"Right":"Left";                // camera x is un-mirrored, so dx<0 = your right
+  }
+
+  if(idx&&mid&&!ring&&!pink) return thumbOut?"Three":"Peace";
+  if(idx&&mid&&ring&&!pink)  return "Three";
+  if(idx&&mid&&ring&&pink)   return "Four";
+  if(idx&&!mid&&!ring&&pink) return thumbOut?"I Love You":"Rock";
+  if(!idx&&!mid&&!ring&&pink) return thumbOut?"Call Me":"I";
+  return "";
+}
+
+/* shared hand features (all distances are divided by palm size) */
+function feats(lm){
+  const palm=d(lm[0],lm[9])||0.0001;
+  const ext=(t,p)=>d(lm[t],lm[0])>d(lm[p],lm[0])*1.12;
+  const f={palm,idx:ext(8,6),mid:ext(12,10),ring:ext(16,14),pink:ext(20,18)};
+  f.thumbOut=d(lm[4],lm[5])/palm>0.75 && d(lm[4],lm[17])>d(lm[3],lm[17]);
+  f.n=f.idx+f.mid+f.ring+f.pink;
+  f.r=(a,b)=>d(lm[a],lm[b])/palm;
+  f.rIdx=d(lm[8],lm[0])/d(lm[6],lm[0]);
+  f.dx=(lm[8].x-lm[5].x)/palm; f.dy=(lm[8].y-lm[5].y)/palm;
+  return f;
+}
+
+function classifyNumber(lm){
+  const f=feats(lm),{idx,mid,ring,pink,thumbOut,n,r}=f;
+  const touch=i=>r(4,i)<0.3;
+  if(touch(20)&&idx&&mid&&ring) return "6";
+  if(touch(16)&&idx&&mid&&pink) return "7";
+  if(touch(12)&&idx&&ring&&pink) return "8";
+  if(touch(8)&&mid&&ring&&pink) return "9";
+  if([8,12,16,20].every(i=>r(4,i)<0.5)&&r(4,0)>1.0) return "0";
+  if(n===4) return thumbOut?"5":"4";
+  if(idx&&!mid&&!ring&&!pink) return "1";
+  if(idx&&mid&&!ring&&!pink) return thumbOut?"3":"2";
+  if(idx&&mid&&ring&&!pink) return "3";
+  return "";
+}
+
+function classifyLetter(lm){
+  const f=feats(lm),{idx,mid,ring,pink,thumbOut,n,r,dx,dy}=f;
+  const horiz=Math.abs(dx)>Math.abs(dy), down=!horiz&&dy>0;
+
+  if([8,12,16,20].every(i=>r(4,i)<0.5)&&r(4,0)>1.0) return "O";
+  if(r(4,8)<0.35&&mid&&ring&&pink) return "F";
+  // C: all fingers partly curled, thumb well away from the index tip
+  if([[8,5],[12,9],[16,13],[20,17]].every(([a,b])=>{const v=r(a,b);return v>0.45&&v<0.78}) && r(4,8)>0.5) return "C";
+
+  if(n===4) return thumbOut?"":"B";
+
+  if(n===0){
+    if(f.rIdx>0.95) return "X";
+    if(thumbOut) return "A";
+    const refs={T:6,N:10,M:14,E:18};
+    let best="S",bd=0.45;
+    for(const k in refs){const v=r(4,refs[k]);if(v<bd){bd=v;best=k}}
+    return best;
+  }
+  if(idx&&!mid&&!ring&&!pink){
+    if(thumbOut) return horiz?"G":"L";
+    if(down) return "Q";
+    if(horiz) return "G";
+    return "D";
+  }
+  if(idx&&mid&&!ring&&!pink){
+    if(down) return "P";
+    if(horiz) return "H";
+    if(thumbOut||r(4,10)<0.45) return "K";
+    if(r(8,12)<0.15) return "R";
+    if(r(8,12)<0.35) return "U";
+    return "V";
+  }
+  if(idx&&mid&&ring&&!pink) return "W";
+  if(!idx&&!mid&&!ring&&pink) return thumbOut?"Y":"I";
+  return "";
+}
+
+function classify(lm){
+  return mode==="numbers"?classifyNumber(lm):mode==="letters"?classifyLetter(lm):classifyWord(lm);
+}
+
+function setMode(m){
+  mode=m;buf=[];holdGesture="";committed="";$("holdBar").style.width="0";
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.m===m));
+  buildGuide();setLive("");
+  if(m==="letters")toast("Letters A–Z · hold each sign steady · J and Z need motion so they're not included");
+  if(m==="numbers")toast("Numbers 0–9 · hold each digit steady");
+}
+
+function stabilise(g){
+  buf.push(g);if(buf.length>BUFFER)buf.shift();
+  const c={};buf.forEach(x=>c[x]=(c[x]||0)+1);
+  let best="",n=0;for(const k in c){if(c[k]>n){n=c[k];best=k}}
+  return n>=NEED?best:"";
+}
+
+function commit(name){
+  const item=DB()[name];if(!item)return;
+  const isChar=mode!=="words";
+  words.push({t:item.word,c:isChar?"char":"word",sp:nextSp});nextSp=false;
+  renderSentence();
+  addHistory("gesture",isChar?(mode==="numbers"?"Number ":"Letter ")+name:name+" → "+item.word);
+  if($("autoSpeak").checked)speak(item.word);
+}
+
+/* ============ MEDIAPIPE ============ */
+function onResults(res){
+  const now=performance.now();
+  const inst=1000/(now-lastFrame);lastFrame=now;fpsAvg=fpsAvg?fpsAvg*.9+inst*.1:inst;
+  $("fps").textContent=Math.round(fpsAvg)+" FPS";
+
+  ctx.clearRect(0,0,$("canvas").width,$("canvas").height);
+  let raw="";
+  if(res.multiHandLandmarks&&res.multiHandLandmarks.length){
+    const lm=res.multiHandLandmarks[0];
+    drawConnectors(ctx,lm,HAND_CONNECTIONS,{color:"#7c6cff",lineWidth:4});
+    drawLandmarks(ctx,lm,{color:"#22d3ee",fillColor:"#ffffff",radius:3});
+    raw=classify(lm);
+  } else {buf=[];}
+
+  const g=stabilise(raw);
+  setLive(g);
+
+  if(g){
+    if(g!==holdGesture){holdGesture=g;holdStart=now}
+    const p=Math.min(1,(now-holdStart)/HOLD_MS);
+    $("holdBar").style.width=(p*100)+"%";
+    if(p>=1&&committed!==g){commit(g);committed=g}
+  } else {
+    holdGesture="";$("holdBar").style.width="0";
+    if(!raw)committed="";      // re-arm once hand leaves / changes
+  }
+}
+
+async function startCamera(){
+  if(running)return;
+  if(typeof Hands==="undefined"){toast("Could not load MediaPipe. Check your internet connection.");return}
+  $("loader").style.display="flex";
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:"user"},audio:false});
+    const v=$("video");v.srcObject=stream;await v.play();
+    const c=$("canvas");c.width=v.videoWidth||640;c.height=v.videoHeight||480;ctx=c.getContext("2d");
+
+    hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.6,minTrackingConfidence:.6});
+    hands.onResults(onResults);
+
+    cam=new Camera(v,{onFrame:async()=>{if(hands)await hands.send({image:v})},width:640,height:480});
+    await cam.start();
+
+    running=true;
+    $("idle").style.display="none";$("fps").style.display="block";
+    $("startBtn").disabled=true;$("stopBtn").disabled=false;$("snapBtn").disabled=false;
+    setCamStatus(true,"Camera live");toast("Camera started ✔");
+  }catch(err){
+    console.error(err);
+    const m=err.name==="NotAllowedError"?"Camera permission denied.":
+            err.name==="NotFoundError"?"No camera found.":"Camera error: "+err.message;
+    toast(m);stopCamera();
+  }
+  $("loader").style.display="none";
+}
+
+function stopCamera(){
+  running=false;
+  try{cam&&cam.stop()}catch(e){}
+  try{hands&&hands.close()}catch(e){}
+  cam=null;hands=null;
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  $("video").srcObject=null;
+  if(ctx)ctx.clearRect(0,0,$("canvas").width,$("canvas").height);
+  buf=[];holdGesture="";committed="";
+  $("idle").style.display="flex";$("fps").style.display="none";$("badge").style.display="none";
+  $("startBtn").disabled=false;$("stopBtn").disabled=true;$("snapBtn").disabled=true;
+  $("holdBar").style.width="0";setLive("");setCamStatus(false,"Camera off");
+}
+
+function snapshot(){
+  const v=$("video"),c=document.createElement("canvas");
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  const x=c.getContext("2d");
+  x.translate(c.width,0);x.scale(-1,1);x.drawImage(v,0,0);
+  x.drawImage($("canvas"),0,0);
+  const a=document.createElement("a");a.href=c.toDataURL("image/png");a.download="signora-snapshot.png";a.click();
+}
+
+/* ============ SPEECH → TEXT ============ */
+let rec=null,listening=false;
+function setupRec(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){$("micBtn").disabled=true;$("speechState").textContent="(not supported in this browser – use Chrome/Edge)";return}
+  rec=new SR();rec.lang="en-US";rec.interimResults=true;rec.continuous=false;
+  rec.onstart=()=>{listening=true;$("micBtn").textContent="⏹ Stop Listening";$("speechState").textContent="● listening";};
+  rec.onend=()=>{listening=false;$("micBtn").textContent="🎤 Start Listening";$("speechState").textContent="";};
+  rec.onerror=e=>{toast("Speech error: "+e.error)};
+  rec.onresult=e=>{
+    let t="";for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
+    const h=$("heard");h.classList.remove("empty");h.textContent=t;
+    if(e.results[e.results.length-1].isFinal)addHistory("speech",t);
+  };
+}
+function toggleMic(){
+  if(!rec)return;
+  try{listening?rec.stop():rec.start()}catch(e){}
+}
+
+/* ============ EVENTS ============ */
+$("startBtn").onclick=startCamera;
+$("stopBtn").onclick=stopCamera;
+$("snapBtn").onclick=snapshot;
+$("micBtn").onclick=toggleMic;
+$("speakBtn").onclick=()=>words.length?speak(sentenceText()):toast("Nothing to speak yet");
+$("copyBtn").onclick=async()=>{
+  if(!words.length)return toast("Nothing to copy");
+  try{await navigator.clipboard.writeText(sentenceText());toast("Copied ✔")}catch(e){toast("Copy failed")}
+};
+$("undoBtn").onclick=()=>{words.pop();renderSentence()};
+$("spaceBtn").onclick=()=>{nextSp=true;toast("Next letter/digit starts a new word")};
+$("clearSentBtn").onclick=()=>{words=[];nextSp=false;renderSentence()};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$("clearHist").onclick=()=>{history=[];try{localStorage.removeItem("signora_hist")}catch(e){};renderHistory()};
+
+/* ============ INIT ============ */
+buildGuide();
+try{history=JSON.parse(localStorage.getItem("signora_hist")||"[]")}catch(e){history=[]}
+renderHistory();renderSentence();setupRec();
+</script>
+</body>
+</html>
